@@ -1,11 +1,11 @@
-name: Windows RDP with Tailscale
+name: Windows RDP with Tailscale (Win 2025)
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2025
     steps:
       - name: Install & Connect Tailscale
         run: |
@@ -17,18 +17,21 @@ jobs:
         env:
           TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
-      - name: Enable RDP + Set Password + Disable NLA
+      - name: Enable RDP + Auto Login
         run: |
-          # Enable RDP
+          # Enable RDP & Firewall
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           net user runneradmin GitHub123!
 
-          # Disable Network Level Authentication (NLA)
+          # Disable NLA
           Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
-
-          # Pastikan port 3389 terbuka
           netsh advfirewall firewall add rule name="RDP" dir=in action=allow protocol=TCP localport=3389
+
+          # Auto login setup
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoAdminLogon" -Value "1" -PropertyType String -Force
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultUsername" -Value "runneradmin" -PropertyType String -Force
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultPassword" -Value "GitHub123!" -PropertyType String -Force
 
       - name: Confirm RDP Ready
         run: query user
