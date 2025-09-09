@@ -5,23 +5,23 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest   # Bisa diganti windows-2022 kalau mau fix
+    runs-on: windows-latest
     steps:
       - name: Install & Connect Tailscale
         run: |
-            Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
-            Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn' -NoNewWindow -Wait
-            Start-Sleep -Seconds 10
-            & "C:\Program Files\Tailscale\tailscale.exe" up --authkey $env:TS_AUTHKEY --accept-routes --accept-dns=false --hostname github-rdp
-            & "C:\Program Files\Tailscale\tailscale.exe" status
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
+          Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn' -NoNewWindow -Wait
+          Start-Sleep -Seconds 10
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey $env:TS_AUTHKEY --accept-routes --accept-dns=false --hostname github-rdp-${env:GITHUB_RUN_ID}
+          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
         env:
-            TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
+          TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
-      - name: Enable RDP
+      - name: Enable RDP + Set Password
         run: |
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          net user admin admin
 
-      - name: Show Tailscale IP
-        run: |
-          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+      - name: Confirm RDP Ready
+        run: query user
