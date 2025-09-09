@@ -5,12 +5,13 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2022
+    runs-on: windows-latest   # Bisa diganti windows-2022 kalau mau fix
     steps:
       - name: Install Tailscale
         run: |
-          msiexec /i https://pkgs.tailscale.com/stable/tailscale-setup-1.66.1-amd64.msi /qn
-          tailscale.exe up --authkey %TS_AUTHKEY% --accept-routes --hostname github-rdp
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
+          Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn' -NoNewWindow -Wait
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey $env:TS_AUTHKEY --accept-routes --hostname github-rdp
         env:
           TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
@@ -19,6 +20,6 @@ jobs:
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-      - name: Show IP
+      - name: Show Tailscale IP
         run: |
-          tailscale ip -4
+          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
