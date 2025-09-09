@@ -1,0 +1,24 @@
+name: Windows RDP with Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Install Tailscale
+        run: |
+          msiexec /i https://pkgs.tailscale.com/stable/tailscale-setup-1.66.1-amd64.msi /qn
+          tailscale.exe up --authkey %TS_AUTHKEY% --accept-routes --hostname github-rdp
+        env:
+          TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Enable RDP
+        run: |
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Show IP
+        run: |
+          tailscale ip -4
