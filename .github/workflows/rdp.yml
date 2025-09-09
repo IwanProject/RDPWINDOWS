@@ -21,7 +21,7 @@ jobs:
         run: |
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          net user admin admin
+          net user runneradmin GitHub123!
 
       - name: Confirm RDP Ready
         run: query user
