@@ -1,24 +1,55 @@
-- name: Enable RDP + Auto Login + Fix NLA
-  run: |
-    # Enable RDP
-    Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
-    Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-    net user runneradmin GitHub123!
+name: Windows RDP with Tailscale (Win 2025)
 
-    # Disable NLA
-    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
+on:
+  workflow_dispatch:
 
-    # Pastikan port 3389 terbuka
-    netsh advfirewall firewall add rule name="RDP3389" dir=in action=allow protocol=TCP localport=3389
+jobs:
+  build:
+    runs-on: windows-2025   # gunakan Windows Server 2025
+    steps:
+      - name: Install & Connect Tailscale
+        run: |
+          # Download installer Tailscale
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
+          
+          # Install Tailscale silent
+          Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn' -NoNewWindow -Wait
+          Start-Sleep -Seconds 10
+          
+          # Connect ke Tailscale
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey $env:TS_AUTHKEY --accept-routes --accept-dns=false --hostname github-rdp-${env:GITHUB_RUN_ID}
+          
+          # Tampilkan IP Tailscale
+          & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+        env:
+          TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
-    # Start RDP services
-    Set-Service -Name TermService -StartupType Automatic
-    Start-Service -Name TermService
+      - name: Enable RDP + Auto Login + Fix NLA
+        run: |
+          # Enable RDP
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # Set password untuk runneradmin
+          net user runneradmin GitHub123!
 
-    # Auto login registry
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoAdminLogon" -Value "1" -PropertyType String -Force
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultUsername" -Value "runneradmin" -PropertyType String -Force
-    New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultPassword" -Value "GitHub123!" -PropertyType String -Force
+          # Disable NLA (Network Level Authentication)
+          Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
+          
+          # Buka port 3389 di firewall
+          netsh advfirewall firewall add rule name="RDP3389" dir=in action=allow protocol=TCP localport=3389
 
-    # Cek port 3389 listening
-    netstat -ano | findstr 3389
+          # Pastikan service RDP aktif
+          Set-Service -Name TermService -StartupType Automatic
+          Start-Service -Name TermService
+
+          # Auto login registry
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoAdminLogon" -Value "1" -PropertyType String -Force
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultUsername" -Value "runneradmin" -PropertyType String -Force
+          New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultPassword" -Value "GitHub123!" -PropertyType String -Force
+
+          # Cek port 3389
+          netstat -ano | findstr 3389
+
+      - name: Confirm RDP Ready
+        run: query user
