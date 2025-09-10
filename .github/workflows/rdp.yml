@@ -1,4 +1,4 @@
-name: Windows RDP with Tailscale (Win 2025)
+name: Windows RDP with Tailscale (Keep Alive 24h)
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ jobs:
   build:
     runs-on: windows-2025
     steps:
+      # Install & Connect Tailscale
       - name: Install & Connect Tailscale
         run: |
           Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
@@ -17,19 +18,38 @@ jobs:
         env:
           TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
+      # Enable RDP, set password, disable NLA
       - name: Enable RDP + Set Password + Disable NLA
         run: |
+          # Enable RDP
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+          # Set password untuk user default
           net user runneradmin GitHub123!
+
+          # Disable NLA biar bisa login biasa
           Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
+
+          # Pastikan firewall buka port 3389
           netsh advfirewall firewall add rule name="RDP3389" dir=in action=allow protocol=TCP localport=3389
+
+          # Jalankan service RDP
           Set-Service -Name TermService -StartupType Automatic
           Start-Service -Name TermService
+
+          # Debug cek port
           netstat -ano | findstr 3389
 
+      # Debug user session
       - name: Confirm RDP Ready
         shell: cmd
         run: |
           query user
           exit /b 0
+
+      # Keep VM alive 24 jam
+      - name: Keep Alive (24h)
+        run: |
+          echo "RDP session running. Do not close this workflow."
+          timeout /t 86400
