@@ -9,48 +9,27 @@ jobs:
     steps:
       - name: Install & Connect Tailscale
         run: |
-          # Download Tailscale installer
           Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" -OutFile "tailscale.msi"
-
-          # Install Tailscale silent
           Start-Process msiexec.exe -ArgumentList '/i tailscale.msi /qn' -NoNewWindow -Wait
           Start-Sleep -Seconds 10
-
-          # Connect ke Tailscale
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey $env:TS_AUTHKEY --accept-routes --accept-dns=false --hostname github-rdp-${env:GITHUB_RUN_ID}
-
-          # Tampilkan IP Tailscale
           & "C:\Program Files\Tailscale\tailscale.exe" ip -4
         env:
           TS_AUTHKEY: ${{ secrets.TS_AUTHKEY }}
 
       - name: Enable RDP + Set Password + Disable NLA
         run: |
-          # Enable RDP
           Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-          # Set password untuk runneradmin
           net user runneradmin GitHub123!
-
-          # Disable Network Level Authentication (NLA)
           Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
-
-          # Buka port 3389 di firewall
           netsh advfirewall firewall add rule name="RDP3389" dir=in action=allow protocol=TCP localport=3389
-
-          # Pastikan service RDP aktif
           Set-Service -Name TermService -StartupType Automatic
           Start-Service -Name TermService
-
-          # Cek port 3389 listening
           netstat -ano | findstr 3389
 
       - name: Confirm RDP Ready
-        shell: pwsh
+        shell: cmd
         run: |
-          try {
-            query user
-          } catch {
-            Write-Host "Query user failed, but continuing..."
-          }
+          query user
+          exit /b 0
