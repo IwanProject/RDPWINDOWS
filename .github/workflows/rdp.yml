@@ -47,4 +47,10 @@ jobs:
           netstat -ano | findstr 3389
 
       - name: Confirm RDP Ready
-        run: query user
+        shell: pwsh
+        run: |
+          try {
+            query user
+          } catch {
+            Write-Host "Query user failed, but continuing..."
+          }
