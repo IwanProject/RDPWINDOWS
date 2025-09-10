@@ -28,7 +28,7 @@ jobs:
           # Set password untuk user default
           net user runneradmin GitHub123!
 
-          # Disable NLA biar bisa login biasa
+          # Disable NLA (supaya login pakai username/password biasa)
           Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -Value 0
 
           # Pastikan firewall buka port 3389
@@ -48,8 +48,9 @@ jobs:
           query user
           exit /b 0
 
-      # Keep VM alive 24 jam
+      # Keep VM alive 24 jam (cmd version)
       - name: Keep Alive (24h)
+        shell: cmd
         run: |
-          echo "RDP session running. Do not close this workflow."
-          timeout /t 86400
+          echo RDP session running. Do not close this workflow.
+          timeout /t 86400 >nul
